@@ -6,8 +6,8 @@ A minimal static website hosted on GitHub Pages to test integration with the Gem
 
 1. **Clone the Repository**:
 
-   ```powershell
-   git clone https://github.com/<your-username>/GeminiLiteTest.git
+   ```text
+   git clone <https://github.com/><your-username>/GeminiLiteTest.git
    cd GeminiLiteTest
    ```
 
@@ -20,20 +20,52 @@ A minimal static website hosted on GitHub Pages to test integration with the Gem
    - Open [Google Apps Script](https://script.google.com).
    - Create a new project named "GeminiLiteTestBackend."
    - Copy the contents of `apps-script/Code.gs` and `apps-script/appsscript.json` into the script editor.
-   - In `Code.gs`, replace `YOUR_GEMINI_API_KEY` with your API key.
+   - Set the Gemini API key:
+     - In the Apps Script Editor, go to **Editor** > **Code.gs**.
+     - Select the `setGeminiApiKey` function from the function dropdown and click **Run**.
+     - Enter your API key when prompted and confirm it’s saved.
    - Deploy as a web app:
      - Click **Deploy** > **New Deployment** > **Web app**.
      - Set **Execute as**: Me.
      - Set **Who has access**: Anyone.
-     - Click **Deploy** and copy the web app URL.
+     - Click **Deploy** and copy the web app URL for manual verification.
 
-4. **Update Frontend**:
-   - In `docs/js/script.js`, replace `YOUR_APPS_SCRIPT_URL` with the web app URL from step 3.
+4. **Install clasp for Automated Deployment**:
+   - Install Node.js if not already installed.
+   - Install clasp globally:
 
-5. **Deploy to GitHub Pages**:
-   - Commit and push changes:
+     ```text
+     npm install -g @google/clasp
+     ```
 
-     ```powershell
+   - Log in to clasp:
+
+     ```text
+     clasp login
+     ```
+
+   - Create `.clasp.json` in the project root:
+
+     ```text
+     clasp create --title "GeminiLiteTestBackend"
+     ```
+
+     Follow prompts to select the script type (Standalone) and note the Script ID.
+
+5. **Deploy Apps Script and Update Frontend**:
+   - Run the deployment script:
+
+     ```text
+     .\deploy-apps-script.ps1
+     ```
+
+     This pushes the code, deploys the web app, updates `docs/js/config.js` with the web app URL, and commits changes.
+   - Verify the deployment by checking `clasp-deploy-output.log` for the web app URL.
+
+6. **Deploy to GitHub Pages**:
+   - Commit and push changes (if not done by the script):
+
+     ```text
      git add .
      git commit -m "Initial project setup"
      git push origin main
@@ -45,28 +77,33 @@ A minimal static website hosted on GitHub Pages to test integration with the Gem
      - Select **Branch**: `main`, **Folder**: `/docs`.
      - Click **Save**.
 
-6. **Test the Website**:
+7. **Test the Website**:
    - Visit `https://<your-username>.github.io/GeminiLiteTest`.
    - Enter a query (e.g., "What is the capital of France?") and click "Submit."
    - Verify the response from the Gemini API.
+   - If CORS errors occur, check the Apps Script logs:
+     - In the Apps Script Editor, go to **View** > **Logs**.
+     - Ensure `doGet` is handling `OPTIONS` requests.
 
 ## Project Structure
 
-```
+```text
 GeminiLiteTest/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml
+├── apps-script/
+│   ├── Code.gs
+│   └── appsscript.json
 ├── docs/
 │   ├── index.html
 │   ├── css/
 │   │   └── styles.css
 │   └── js/
+│       ├── config.js
 │       └── script.js
-├── apps-script/
-│   ├── Code.gs
-│   └── appsscript.json
 ├── .gitignore
+├── deploy-apps-script.ps1
 └── README.md
 ```
 
@@ -75,3 +112,4 @@ GeminiLiteTest/
 - The Gemini 2.0 Flash Lite API is text-only and cost-efficient, suitable for lightweight applications.
 - Ensure your Google Cloud project has the Gemini API enabled.
 - Monitor API usage to stay within free tier limits.
+- If deployment fails, check `clasp-deploy-output.log` and Apps Script logs for errors.

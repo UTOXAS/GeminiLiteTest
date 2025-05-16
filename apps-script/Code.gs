@@ -1,52 +1,47 @@
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash-lite:generateContent';
 
-function doGet(e) {
-  // Handle preflight OPTIONS requests for CORS
-  return ContentService.createTextOutput('')
+// Helper to create CORS-enabled response
+function createCorsResponse(content = '') {
+  return ContentService.createTextOutput(content)
     .setMimeType(ContentService.MimeType.JSON)
     .setHeaders({
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type',
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Max-Age': '3600'
     });
 }
 
+function doGet(e) {
+  Logger.log('Received OPTIONS request for CORS preflight');
+  return createCorsResponse();
+}
+
 function doPost(e) {
   try {
-    // Set CORS headers for all responses
-    const output = ContentService.createTextOutput();
-    output.setMimeType(ContentService.MimeType.JSON);
-    output.setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type'
-    });
-
-    const data = JSON.parse(e.postData.contents);
+    Logger.log('Received POST request with data: ' + e.postData.contents);
+    const data = JSON.parse(e.postData.contents || '{}');
     const query = data.query;
 
     if (!query) {
-      return output.setContent(JSON.stringify({ error: 'Query is required' }));
+      Logger.log('Error: Query is missing');
+      return createCorsResponse(JSON.stringify({ error: 'Query is required' }));
     }
 
     const response = callGeminiAPI(query);
-    return output.setContent(JSON.stringify({ response: response }));
+    Logger.log('Successful response from Gemini API');
+    return createCorsResponse(JSON.stringify({ response: response }));
   } catch (error) {
-    return ContentService.createTextOutput(JSON.stringify({ error: error.message }))
-      .setMimeType(ContentService.MimeType.JSON)
-      .setHeaders({
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'POST, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type'
-      });
+    Logger.log('Error in doPost: ' + error.message);
+    return createCorsResponse(JSON.stringify({ error: error.message }));
   }
 }
 
 function callGeminiAPI(query) {
   const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
   if (!API_KEY) {
-    throw new Error('Gemini API key not configured');
+    Logger.log('Error: Gemini API key not configured');
+    throw new Error('Gemini API key not configured. Run setGeminiApiKey() to configure.');
   }
 
   const payload = {
@@ -65,15 +60,37 @@ function callGeminiAPI(query) {
     headers: {
       'Authorization': `Bearer ${API_KEY}`
     },
-    payload: JSON.stringify(payload)
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true // Prevent UrlFetchApp from throwing on non-2xx responses
   };
 
   const response = UrlFetchApp.fetch(GEMINI_API_URL, options);
-  const json = JSON.parse(response.getContentText());
-  
-  if (json.candidates && json.candidates[0].content) {
+  const responseCode = response.getResponseCode();
+  const responseText = response.getContentText();
+
+  if (responseCode !== 200) {
+    Logger.log('Gemini API error: ' + responseText);
+    throw new Error(`Gemini API returned ${responseCode}: ${responseText}`);
+  }
+
+  const json = JSON.parse(responseText);
+  if (json.candidates && json.candidates[0].content && json.candidates[0].content.parts[0].text) {
     return json.candidates[0].content.parts[0].text;
   } else {
+    Logger.log('Invalid Gemini API response: ' + responseText);
     throw new Error('No valid response from Gemini API');
+  }
+}
+
+// Utility function to set API key (run manually in Apps Script Editor)
+function setGeminiApiKey() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.prompt('Enter your Gemini API Key:');
+  const apiKey = response.getResponseText();
+  if (apiKey) {
+    PropertiesService.getScriptProperties().setProperty('GEMINI_API_KEY', apiKey);
+    ui.alert('API Key saved successfully!');
+  } else {
+    ui.alert('No API Key provided.');
   }
 }
