@@ -22,7 +22,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Create a new version
-Write      Write-Host "Creating new Apps Script version..."
+Write-Host "Creating new Apps Script version..."
 $versionOutput = clasp version "Automated deployment for GeminiLiteTestBackend" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to create new version: $versionOutput"
@@ -65,28 +65,47 @@ Write-Host "Logging clasp deploy output..."
 $deployOutput | Out-File -FilePath "clasp-deploy-output.log" -Encoding utf8
 Write-Host "Clasp deploy output logged to clasp-deploy-output.log"
 
-# Extract deployment ID
+# Extract deployment ID from output
 Write-Host "Extracting deployment ID..."
-$deployId = $deployOutput | Select-String "Deployed ([A-Za-z0-9_-]+) @\d+" | ForEach-Object { $_.Matches.Groups[1].Value }
-if (-not $deployId -or $deployId.Length -lt 30) {
-    Write-Error "Could not extract valid deployment ID from clasp output. Expected format: 'Deployed <ID> @<version>'. Check clasp-deploy-output.log and ensure clasp is up to date."
+$match = $deployOutput | Select-String "Deployed ([A-Za-z0-9_-]+) @\d+"
+if ($match) {
+    $deployId = $match.Matches[0].Groups[1].Value
+} else {
+    Write-Error "Could not find deployment ID in clasp output: $deployOutput. Check clasp-deploy-output.log."
     exit 1
 }
 
-# Get the web app URL
-$scriptId = (Get-Content .clasp.json | ConvertFrom-Json).scriptId
+# Validate deployment ID
+if (-not $deployId -or $deployId.Length -lt 30) {
+    Write-Error "Invalid deployment ID extracted: $deployId"
+    exit 1
+}
+
 $webAppUrl = "https://script.google.com/macros/s/$deployId/exec"
 Write-Host "Web App URL: $webAppUrl"
 
-# Verify web app accessibility
-Write-Host "Verifying web app accessibility..."
+# Verify web app accessibility with OPTIONS request
+Write-Host "Verifying web app accessibility with OPTIONS request..."
 try {
     $response = Invoke-WebRequest -Uri $webAppUrl -Method OPTIONS -UseBasicParsing -ErrorAction Stop
     if ($response.StatusCode -eq 200) {
-        Write-Host "Web app is accessible and responds to OPTIONS request."
+        Write-Host "Web app responds to OPTIONS request successfully."
     }
 } catch {
-    Write-Warning "Failed to verify web app: $_"
+    Write-Warning "OPTIONS request verification failed: $_"
+}
+
+# Verify web app accessibility with POST request
+Write-Host "Verifying web app accessibility with POST request..."
+try {
+    $response = Invoke-WebRequest -Uri $webAppUrl -Method POST -Body '{"query":"test"}' -ContentType 'application/json' -UseBasicParsing -ErrorAction Stop
+    if ($response.StatusCode -eq 200) {
+        Write-Host "Web app is accessible and responds to POST request."
+    } else {
+        Write-Warning "Web app returned status code: $($response.StatusCode)"
+    }
+} catch {
+    Write-Warning "POST request verification failed: $_"
 }
 
 # Update config.js file
