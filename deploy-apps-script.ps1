@@ -22,7 +22,7 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Create a new version
-Write-Host "Creating new Apps Script version..."
+Write      Write-Host "Creating new Apps Script version..."
 $versionOutput = clasp version "Automated deployment for GeminiLiteTestBackend" 2>&1
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Failed to create new version: $versionOutput"
@@ -61,13 +61,15 @@ if (-not $success) {
 }
 
 # Log raw output for debugging
+Write-Host "Logging clasp deploy output..."
 $deployOutput | Out-File -FilePath "clasp-deploy-output.log" -Encoding utf8
 Write-Host "Clasp deploy output logged to clasp-deploy-output.log"
 
 # Extract deployment ID
-$deployId = $deployOutput | Select-String "Created deployment (\w+)" | ForEach-Object { $_.Matches.Groups[1].Value }
-if (-not $deployId) {
-    Write-Error "Could not extract deployment ID from clasp output. Check clasp-deploy-output.log for details."
+Write-Host "Extracting deployment ID..."
+$deployId = $deployOutput | Select-String "Deployed ([A-Za-z0-9_-]+) @\d+" | ForEach-Object { $_.Matches.Groups[1].Value }
+if (-not $deployId -or $deployId.Length -lt 30) {
+    Write-Error "Could not extract valid deployment ID from clasp output. Expected format: 'Deployed <ID> @<version>'. Check clasp-deploy-output.log and ensure clasp is up to date."
     exit 1
 }
 
