@@ -4,19 +4,27 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemi
 function createCorsResponse(content = '') {
   const output = ContentService.createTextOutput(content)
     .setMimeType(ContentService.MimeType.JSON);
-  output.setHeaders({
+  const headers = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '3600'
-  });
+  };
+  output.setHeaders(headers);
+  debugHeaders(headers);
   return output;
+}
+
+// Debug headers for logging
+function debugHeaders(headers) {
+  Logger.log('Response Headers: ' + JSON.stringify(headers));
 }
 
 // Handle all HTTP requests
 function doGet(e) {
   // Handle CORS preflight OPTIONS request
-  if (e?.parameter?.method === 'OPTIONS' || e?.method === 'OPTIONS') {
+  const method = e?.method || e?.parameter?.method || 'GET';
+  if (method.toUpperCase() === 'OPTIONS') {
     Logger.log('Handling OPTIONS request for CORS preflight');
     return createCorsResponse();
   }
@@ -48,7 +56,8 @@ function doGet(e) {
 // Handle POST requests
 function doPost(e) {
   // Handle CORS preflight OPTIONS request
-  if (e?.parameter?.method === 'OPTIONS' || e?.method === 'OPTIONS') {
+  const method = e?.method || e?.parameter?.method || 'POST';
+  if (method.toUpperCase() === 'OPTIONS') {
     Logger.log('Handling OPTIONS request for CORS preflight');
     return createCorsResponse();
   }
