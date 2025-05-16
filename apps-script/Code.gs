@@ -2,25 +2,33 @@ const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1/models/gemi
 
 // Helper to create CORS-enabled response
 function createCorsResponse(content = '') {
-  return ContentService.createTextOutput(content)
-    .setMimeType(ContentService.MimeType.JSON)
-    .setHeaders({
-      'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
-      'Access-Control-Max-Age': '3600'
-    });
+  const output = ContentService.createTextOutput(content)
+    .setMimeType(ContentService.MimeType.JSON);
+  output.setHeaders({
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Max-Age': '3600'
+  });
+  return output;
 }
 
+// Handle OPTIONS for CORS preflight
 function doGet(e) {
-  Logger.log('Received OPTIONS request for CORS preflight');
+  Logger.log('Handling OPTIONS request for CORS preflight');
   return createCorsResponse();
 }
 
+// Handle POST requests
 function doPost(e) {
   try {
-    Logger.log('Received POST request with data: ' + e.postData.contents);
-    const data = JSON.parse(e.postData.contents || '{}');
+    Logger.log('Received POST request: ' + (e.postData?.contents || 'No content'));
+    if (!e.postData?.contents) {
+      Logger.log('Error: No post data received');
+      return createCorsResponse(JSON.stringify({ error: 'No post data received' }));
+    }
+
+    const data = JSON.parse(e.postData.contents);
     const query = data.query;
 
     if (!query) {
@@ -29,7 +37,7 @@ function doPost(e) {
     }
 
     const response = callGeminiAPI(query);
-    Logger.log('Successful response from Gemini API');
+    Logger.log('Successful Gemini API response');
     return createCorsResponse(JSON.stringify({ response: response }));
   } catch (error) {
     Logger.log('Error in doPost: ' + error.message);
@@ -61,7 +69,7 @@ function callGeminiAPI(query) {
       'Authorization': `Bearer ${API_KEY}`
     },
     payload: JSON.stringify(payload),
-    muteHttpExceptions: true // Prevent UrlFetchApp from throwing on non-2xx responses
+    muteHttpExceptions: true
   };
 
   const response = UrlFetchApp.fetch(GEMINI_API_URL, options);
@@ -82,7 +90,7 @@ function callGeminiAPI(query) {
   }
 }
 
-// Utility function to set API key (run manually in Apps Script Editor)
+// Utility function to set API key
 function setGeminiApiKey() {
   const ui = SpreadsheetApp.getUi();
   const response = ui.prompt('Enter your Gemini API Key:');
