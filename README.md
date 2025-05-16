@@ -7,7 +7,7 @@ A minimal static website hosted on GitHub Pages to test integration with the Gem
 1. **Clone the Repository**:
 
    ```text
-   git clone <https://github.com/><your-username>/GeminiLiteTest.git
+   git clone https://github.com/UTOXAS/GeminiLiteTest.git
    cd GeminiLiteTest
    ```
 
