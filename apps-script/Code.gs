@@ -13,10 +13,82 @@ function createCorsResponse(content = '') {
   return output;
 }
 
-// Handle OPTIONS for CORS preflight
+// Handle GET and OPTIONS requests
 function doGet(e) {
-  Logger.log('Handling OPTIONS request for CORS preflight');
-  return createCorsResponse();
+  // Handle CORS preflight OPTIONS request
+  if (e.parameter.method === 'OPTIONS') {
+    Logger.log('Handling OPTIONS request for CORS preflight');
+    return createCorsResponse();
+  }
+
+  // Handle standard GET request with hardcoded query
+  Logger.log('Handling GET request for hardcoded Gemini query');
+  const hardcodedQuery = 'What is the capital of France?';
+  let responseText = '';
+  let isError = false;
+
+  try {
+    responseText = callGeminiAPI(hardcodedQuery);
+    Logger.log('Successful Gemini API response for GET request');
+  } catch (error) {
+    responseText = `Error: ${error.message}`;
+    isError = true;
+    Logger.log('Error in doGet: ' + error.message);
+  }
+
+  // Create HTML output
+  const html = `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>GeminiLite Test</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background-color: #f4f4f4;
+            text-align: center;
+          }
+          .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+          }
+          h1 {
+            color: #333;
+          }
+          p {
+            color: #666;
+          }
+          .response {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            text-align: left;
+          }
+          .error {
+            border-color: #dc3545;
+            color: #dc3545;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <h1>GeminiLite Test</h1>
+          <p>Hardcoded Query: ${hardcodedQuery}</p>
+          <div class="response${isError ? ' error' : ''}">
+            ${responseText}
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+
+  return HtmlService.createHtmlOutput(html);
 }
 
 // Handle POST requests
@@ -52,6 +124,10 @@ function callGeminiAPI(query) {
     throw new Error('Gemini API key not configured. Run setGeminiApiKey() to configure.');
   }
 
+  // Append API key as query parameter
+  const url = `${GEMINI_API_URL}?key=${API_KEY}`;
+  Logger.log('Calling Gemini API with URL: ' + url);
+
   const payload = {
     contents: [
       {
@@ -65,14 +141,11 @@ function callGeminiAPI(query) {
   const options = {
     method: 'POST',
     contentType: 'application/json',
-    headers: {
-      'Authorization': `Bearer ${API_KEY}`
-    },
     payload: JSON.stringify(payload),
     muteHttpExceptions: true
   };
 
-  const response = UrlFetchApp.fetch(GEMINI_API_URL, options);
+  const response = UrlFetchApp.fetch(url, options);
   const responseCode = response.getResponseCode();
   const responseText = response.getContentText();
 
