@@ -29,10 +29,14 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
+# Log raw output for debugging
+$deployOutput | Out-File -FilePath "clasp-deploy-output.log" -Encoding utf8
+Write-Host "Clasp deploy output logged to clasp-deploy-output.log"
+
 # Extract deployment ID from output
-$deployId = $deployOutput | Select-String "Created version \d+.\n- (\w+) @HEAD" | ForEach-Object { $_.Matches.Groups[1].Value }
+$deployId = $deployOutput | Select-String "- (\w+) @HEAD" | ForEach-Object { $_.Matches.Groups[1].Value }
 if (-not $deployId) {
-    Write-Error "Could not extract deployment ID from clasp output."
+    Write-Error "Could not extract deployment ID from clasp output. Check clasp-deploy-output.log for details."
     exit 1
 }
 
