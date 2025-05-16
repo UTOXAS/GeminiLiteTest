@@ -36,6 +36,41 @@ if (-not $version) {
     exit 1
 }
 
+# List and delete all but the most recent deployment
+Write-Host "Listing existing deployments..."
+$deploymentsOutput = clasp deployments 2>&1
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Failed to list deployments: $deploymentsOutput"
+    exit 1
+}
+
+# Parse deployments (format: - <deploymentId> @<version>)
+$deployments = $deploymentsOutput -split "`n" | Where-Object { $_ -match '^- ([\w-]+) @(\d+)' } | ForEach-Object {
+    $matches = $_ -match '^- ([\w-]+) @(\d+)'
+    [PSCustomObject]@{
+        DeploymentId = $Matches[1]
+        Version = [int]$Matches[2]
+    }
+} | Sort-Object Version -Descending
+
+Write-Host "Found $($deployments.Count) deployments."
+
+# Delete all but the most recent deployment
+if ($deployments.Count -gt 1) {
+    $deploymentsToDelete = $deployments | Select-Object -Skip 1
+    foreach ($dep in $deploymentsToDelete) {
+        Write-Host "Deleting old deployment: $($dep.DeploymentId) @ Version $($dep.Version)"
+        $undeployOutput = clasp undeploy --force $dep.DeploymentId 2>&1
+        if ($LASTEXITCODE -eq 0) {
+            Write-Host "Successfully deleted deployment: $($dep.DeploymentId)"
+        } else {
+            Write-Warning "Failed to delete deployment $($dep.DeploymentId): $undeployOutput. Continuing..."
+        }
+    }
+} elseif ($deployments.Count -eq 0) {
+    Write-Host "No existing deployments found. Proceeding with new deployment."
+}
+
 # Deploy the Apps Script project as a web app with retry logic
 Write-Host "Deploying Apps Script as web app (Version $version)..."
 $maxRetries = 3
@@ -113,9 +148,4 @@ Write-Host "Updating config.js file..."
 Set-Content -Path docs/js/config.js -Value "const APPS_SCRIPT_URL = '$webAppUrl';"
 Write-Host "config.js updated successfully."
 
-# Commit changes to config.js
-Write-Host "Committing config.js changes..."
-git add docs/js/config.js
-git commit -m "Update Apps Script URL in config.js for deployment $deployId" --no-verify
-git push origin main
-Write-Host "Deployment complete."
+Write-Host "Deployment complete. Note: GitHub commit and push skipped per user request. Manually commit changes if needed."
