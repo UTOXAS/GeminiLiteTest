@@ -1,5 +1,5 @@
 # deploy-apps-script.ps1
-# Automates pushing and deploying Google Apps Script code, updating .env with the web app URL
+# Automates pushing and deploying Google Apps Script code, updating config.js with the web app URL
 
 # Ensure clasp is installed
 if (-not (Get-Command clasp -ErrorAction SilentlyContinue)) {
@@ -34,7 +34,7 @@ $deployOutput | Out-File -FilePath "clasp-deploy-output.log" -Encoding utf8
 Write-Host "Clasp deploy output logged to clasp-deploy-output.log"
 
 # Extract deployment ID from output
-$deployId = $deployOutput | Select-String "- (\w+) @HEAD" | ForEach-Object { $_.Matches.Groups[1].Value }
+$deployId = $deployOutput | Select-String "Deployed (\w+) @\d+" | ForEach-Object { $_.Matches.Groups[1].Value }
 if (-not $deployId) {
     Write-Error "Could not extract deployment ID from clasp output. Check clasp-deploy-output.log for details."
     exit 1
@@ -45,15 +45,14 @@ $scriptId = (Get-Content .clasp.json | ConvertFrom-Json).scriptId
 $webAppUrl = "https://script.google.com/macros/s/$deployId/exec"
 Write-Host "Web App URL: $webAppUrl"
 
-# Update .env file
-Write-Host "Updating .env file..."
-Set-Content -Path .env -Value "APPS_SCRIPT_URL=$webAppUrl"
-Copy-Item .env docs\.env
-Write-Host ".env updated successfully."
+# Update config.js file
+Write-Host "Updating config.js file..."
+Set-Content -Path docs/js/config.js -Value "const APPS_SCRIPT_URL = '$webAppUrl';"
+Write-Host "config.js updated successfully."
 
-# Commit changes to .env
-Write-Host "Committing .env changes to docs..."
-git add docs\.env
-git commit -m "Update Apps Script URL in .env" --no-verify
+# Commit changes to config.js
+Write-Host "Committing config.js changes..."
+git add docs/js/config.js
+git commit -m "Update Apps Script URL in config.js" --no-verify
 git push origin main
 Write-Host "Deployment complete."
