@@ -15,11 +15,15 @@
         <div class="input-group">
             <input type="text" id="queryInput" placeholder="Enter your query (e.g., What is the capital of France?)">
             <button id="submitButton">Submit</button>
+            <button id="testGetButton">Test GET Request</button>
         </div>
         <div id="responseArea" class="response"></div>
     </div>
     <script src="js/config.js"></script>
     <script src="js/script.js"></script>
+    <script>
+        document.getElementById('testGetButton').addEventListener('click', testGetRequest);
+    </script>
 </body>
 
 </html>

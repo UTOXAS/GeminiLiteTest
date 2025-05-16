@@ -35,7 +35,7 @@ p {
     font-size: 16px;
 }
 
-#submitButton {
+#submitButton, #testGetButton {
     padding: 10px 20px;
     background-color: #007bff;
     color: #fff;
@@ -46,7 +46,7 @@ p {
     margin-left: 10px;
 }
 
-#submitButton:hover {
+#submitButton:hover, #testGetButton:hover {
     background-color: #0056b3;
 }
 
@@ -69,8 +69,9 @@ p {
         width: 100%;
         margin-bottom: 10px;
     }
-    #submitButton {
+    #submitButton, #testGetButton {
         width: 100%;
         margin-left: 0;
+        margin-bottom: 10px;
     }
 }

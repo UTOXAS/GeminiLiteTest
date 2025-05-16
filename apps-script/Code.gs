@@ -6,17 +6,17 @@ function createCorsResponse(content = '') {
     .setMimeType(ContentService.MimeType.JSON);
   output.setHeaders({
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type',
     'Access-Control-Max-Age': '3600'
   });
   return output;
 }
 
-// Handle GET and OPTIONS requests
+// Handle all HTTP requests
 function doGet(e) {
   // Handle CORS preflight OPTIONS request
-  if (e.parameter.method === 'OPTIONS') {
+  if (e?.parameter?.method === 'OPTIONS' || e?.method === 'OPTIONS') {
     Logger.log('Handling OPTIONS request for CORS preflight');
     return createCorsResponse();
   }
@@ -36,63 +36,23 @@ function doGet(e) {
     Logger.log('Error in doGet: ' + error.message);
   }
 
-  // Create HTML output
-  const html = `
-    <!DOCTYPE html>
-    <html>
-      <head>
-        <title>GeminiLite Test</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            margin: 40px;
-            background-color: #f4f4f4;
-            text-align: center;
-          }
-          .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-          }
-          h1 {
-            color: #333;
-          }
-          p {
-            color: #666;
-          }
-          .response {
-            margin-top: 20px;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            text-align: left;
-          }
-          .error {
-            border-color: #dc3545;
-            color: #dc3545;
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <h1>GeminiLite Test</h1>
-          <p>Hardcoded Query: ${hardcodedQuery}</p>
-          <div class="response${isError ? ' error' : ''}">
-            ${responseText}
-          </div>
-        </div>
-      </body>
-    </html>
-  `;
-
-  return HtmlService.createHtmlOutput(html);
+  // Return JSON response
+  const response = {
+    query: hardcodedQuery,
+    response: responseText,
+    error: isError
+  };
+  return createCorsResponse(JSON.stringify(response));
 }
 
 // Handle POST requests
 function doPost(e) {
+  // Handle CORS preflight OPTIONS request
+  if (e?.parameter?.method === 'OPTIONS' || e?.method === 'OPTIONS') {
+    Logger.log('Handling OPTIONS request for CORS preflight');
+    return createCorsResponse();
+  }
+
   try {
     Logger.log('Received POST request: ' + (e.postData?.contents || 'No content'));
     if (!e.postData?.contents) {
